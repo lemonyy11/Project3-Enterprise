@@ -1,0 +1,79 @@
+import javax.swing.*;
+import java.awt.*;
+
+public class Application extends JFrame {
+
+    // Declaring buttons and other components
+    private JButton connectButton, disconnectButton, executeButton, clearCommandButton, clearResultsButton, closeButton;
+    private JComboBox<String> dbUrlProperties, userProperties;
+
+    public Application() {
+        // Set the title of the window
+        setTitle("SQL Client Application - (Lily Yarbrough - CNT4714 - Project 3 - Fall 2024)");
+
+        // Set layout for the main window
+        setLayout(new BorderLayout(10, 10));
+
+        // Top panel for DB URL and User Properties dropdowns + Username and Password fields
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));  // Align dropdowns to the left
+        dbUrlProperties = new JComboBox<>(new String[]{"project3.properties", "bikedb.properties", "operationslog.properties"});
+        userProperties = new JComboBox<>(new String[]{"root.properties", "client1.properties", "client2.properties"});
+        JTextField userText = new JTextField(10);  // Width set for consistent spacing
+        JPasswordField passwordText = new JPasswordField(10);
+
+        // Add dropdowns and input fields to the top panel
+        topPanel.add(new JLabel("DB URL Properties:"));
+        topPanel.add(dbUrlProperties);
+        topPanel.add(new JLabel("User Properties:"));
+        topPanel.add(userProperties);
+        topPanel.add(new JLabel("Username:"));
+        topPanel.add(userText);
+        topPanel.add(new JLabel("Password:"));
+        topPanel.add(passwordText);
+
+        // Panel for buttons to place above SQL command box
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 6, 10, 10));  // 1 row, 6 columns for buttons
+        connectButton = new JButton("Connect to Database");
+        disconnectButton = new JButton("Disconnect From Database");
+        executeButton = new JButton("Execute SQL Command");
+        clearCommandButton = new JButton("Clear SQL Command");
+        clearResultsButton = new JButton("Clear Result Window");
+        closeButton = new JButton("Close Application");
+
+        // Add buttons to the button panel
+        buttonPanel.add(connectButton);
+        buttonPanel.add(disconnectButton);
+        buttonPanel.add(executeButton);
+        buttonPanel.add(clearCommandButton);
+        buttonPanel.add(clearResultsButton);
+        buttonPanel.add(closeButton);
+
+        // Center panel for SQL text and result text areas
+        JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
+        JTextArea sqlText = new JTextArea("Enter your SQL command here", 2, 20);
+        JTextArea resultText = new JTextArea("Results will appear here", 15, 40);
+        resultText.setEditable(false);
+
+        centerPanel.add(buttonPanel, BorderLayout.NORTH); // Buttons above SQL command box
+        centerPanel.add(new JScrollPane(sqlText), BorderLayout.CENTER); // Smaller entry box in center
+        centerPanel.add(new JScrollPane(resultText), BorderLayout.SOUTH); // Larger execution box at the bottom
+
+        // Add the top panel, center panel, and button panel to the main frame
+        add(topPanel, BorderLayout.NORTH);       // Top panel for dropdowns and fields
+        add(centerPanel, BorderLayout.CENTER);   // Center panel for SQL command and results
+
+        // Set the window size
+        setSize(800, 600);
+
+        // Ensure the application closes when clicking the close button
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Make sure the window is visible
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        // Run the application
+        new Application();
+    }
+}
