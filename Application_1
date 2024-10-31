@@ -1,0 +1,127 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class Application extends JFrame {
+
+    // Declaring buttons and other components
+    private JButton connectButton, disconnectButton, executeButton, clearCommandButton, clearResultsButton, closeButton;
+    private JComboBox<String> dbUrlProperties, userProperties;
+    private JTextArea sqlText; // Declare sqlText as a class-level variable
+    private JTextArea resultText; // Declare resultText as a class-level variable
+    private Connection connection; // Class-level variable for the database connection
+    private JLabel statusLabel; // Label to show connection status
+
+    public Application() {
+        // Set the title of the window
+        setTitle("SQL Client Application - (Lily Yarbrough - CNT4714 - Project 3 - Fall 2024)");
+
+        // Set layout for the main window
+        setLayout(new BorderLayout(10, 10));
+
+        // Top panel for DB URL and User Properties dropdowns + Username and Password fields
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));  // Align dropdowns to the left
+        dbUrlProperties = new JComboBox<>(new String[]{
+                "jdbc:mysql://localhost:3306/bikedb",
+                "jdbc:mysql://localhost:3306/project3",
+                "jdbc:mysql://localhost:3306/operationslog"
+        });
+        userProperties = new JComboBox<>(new String[]{"root", "client1", "client2"});
+        JTextField userText = new JTextField(10);  // Width set for consistent spacing
+        JPasswordField passwordText = new JPasswordField(10);
+
+        // Add dropdowns and input fields to the top panel
+        topPanel.add(new JLabel("DB URL Properties:"));
+        topPanel.add(dbUrlProperties);
+        topPanel.add(new JLabel("User Properties:"));
+        topPanel.add(userProperties);
+        topPanel.add(new JLabel("Username:"));
+        topPanel.add(userText);
+        topPanel.add(new JLabel("Password:"));
+        topPanel.add(passwordText);
+
+        // Panel for buttons to place above SQL command box
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 6, 10, 10));  // 1 row, 6 columns for buttons
+        connectButton = new JButton("Connect to Database");
+        buttonPanel.add(connectButton);
+
+        disconnectButton = new JButton("Disconnect From Database");
+        buttonPanel.add(disconnectButton);
+
+        executeButton = new JButton("Execute SQL Command");
+        buttonPanel.add(executeButton);
+
+        clearCommandButton = new JButton("Clear SQL Command");
+        buttonPanel.add(clearCommandButton);
+
+        clearResultsButton = new JButton("Clear Result Window");
+        buttonPanel.add(clearResultsButton);
+
+        // Clear results button functionality
+        clearResultsButton.addActionListener(e -> resultText.setText("")); // Clear the result text area
+
+        closeButton = new JButton("Close Application");
+        buttonPanel.add(closeButton);
+
+        // Close button functionality
+        closeButton.addActionListener(e -> System.exit(0));
+
+        // Center panel for SQL text and result text areas
+        JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
+
+        // Initialize sqlText and resultText as class-level variables
+        sqlText = new JTextArea("Enter your SQL command here", 2, 20);
+        resultText = new JTextArea("Results will appear here", 15, 40);
+        resultText.setEditable(false);
+
+        centerPanel.add(buttonPanel, BorderLayout.NORTH); // Buttons above SQL command box
+        centerPanel.add(new JScrollPane(sqlText), BorderLayout.CENTER); // Smaller entry box in center
+        centerPanel.add(new JScrollPane(resultText), BorderLayout.SOUTH); // Larger execution box at the bottom
+
+        // Add the top panel and center panel to the main frame
+        add(topPanel, BorderLayout.NORTH);       // Top panel for dropdowns and fields
+        add(centerPanel, BorderLayout.CENTER);   // Center panel for SQL command and results
+
+        // Status label to indicate connection status
+        statusLabel = new JLabel("No connection established", JLabel.CENTER);
+        statusLabel.setForeground(Color.RED);
+        add(statusLabel, BorderLayout.SOUTH); // Place status label at the bottom
+
+        // Set up database connection action
+        connectButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String selectedDB = (String) dbUrlProperties.getSelectedItem();
+                String username = userText.getText();
+                String password = new String(passwordText.getPassword());
+
+                try {
+                    connection = DriverManager.getConnection(selectedDB, username, password);
+                    statusLabel.setText("Connected to " + selectedDB); // Update status label
+                    statusLabel.setForeground(Color.GREEN); // Change color to green
+                } catch (SQLException ex) {
+                    statusLabel.setText("Connection failed: " + ex.getMessage());
+                    statusLabel.setForeground(Color.RED); // Change color to red
+                }
+            }
+        });
+
+        // Set the window size
+        setSize(800, 600);
+
+        // Ensure the application closes when clicking the close button
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Make sure the window is visible
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        // Run the application
+        new Application();
+    }
+}
