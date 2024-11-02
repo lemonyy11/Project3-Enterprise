@@ -1,0 +1,241 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.sql.*;
+import java.util.Properties;
+
+public class ApplicationAccountant extends JFrame {
+
+    // Declaring buttons and other components
+    private JButton connectButton, disconnectButton, executeButton, clearCommandButton, clearResultsButton, closeButton;
+    private JComboBox<String> dbUrlProperties, userProperties;
+    private JTextArea sqlText;
+    private JTextArea resultText;
+    private Connection connection;
+    private JLabel statusLabel;
+
+    private String logUsername;
+    private String logPassword;
+
+    public ApplicationAccountant() {
+        setTitle("SQL Client Application - (Lily Yarbrough - CNT4714 - Project 3 - Fall 2024)");
+        setLayout(new BorderLayout(10, 10));
+
+        // UI Components Setup
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        dbUrlProperties = new JComboBox<>(new String[]{"operationslog.properties"});
+        userProperties = new JComboBox<>(new String[]{"theaccountant.properties"});
+
+        JTextField userText = new JTextField(10);
+        JPasswordField passwordText = new JPasswordField(10);
+
+        topPanel.add(new JLabel("DB URL Properties:"));
+        topPanel.add(dbUrlProperties);
+        topPanel.add(new JLabel("User Properties:"));
+        topPanel.add(userProperties);
+        topPanel.add(new JLabel("Username:"));
+        topPanel.add(userText);
+        topPanel.add(new JLabel("Password:"));
+        topPanel.add(passwordText);
+
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 6, 10, 10));
+        connectButton = new JButton("Connect to Database");
+        buttonPanel.add(connectButton);
+
+        disconnectButton = new JButton("Disconnect From Database");
+        buttonPanel.add(disconnectButton);
+
+        executeButton = new JButton("Execute SQL Command");
+        buttonPanel.add(executeButton);
+
+        clearCommandButton = new JButton("Clear SQL Command");
+        buttonPanel.add(clearCommandButton);
+
+        clearResultsButton = new JButton("Clear Result Window");
+        buttonPanel.add(clearResultsButton);
+        clearResultsButton.addActionListener(e -> resultText.setText(""));
+
+        closeButton = new JButton("Close Application");
+        buttonPanel.add(closeButton);
+        closeButton.addActionListener(e -> System.exit(0));
+
+        JPanel centerPanel = new JPanel(new BorderLayout(10, 10));
+        sqlText = new JTextArea("Enter your SQL command here", 2, 20);
+        resultText = new JTextArea("Results will appear here", 15, 40);
+        resultText.setEditable(false);
+
+        centerPanel.add(buttonPanel, BorderLayout.NORTH);
+        centerPanel.add(new JScrollPane(sqlText), BorderLayout.CENTER);
+        centerPanel.add(new JScrollPane(resultText), BorderLayout.SOUTH);
+
+        add(topPanel, BorderLayout.NORTH);
+        add(centerPanel, BorderLayout.CENTER);
+
+        statusLabel = new JLabel("No connection established", JLabel.CENTER);
+        statusLabel.setForeground(Color.RED);
+        add(statusLabel, BorderLayout.SOUTH);
+
+        // Action listeners for buttons
+        connectButton.addActionListener(e -> connectToDatabase(userText.getText(), new String(passwordText.getPassword())));
+        disconnectButton.addActionListener(e -> disconnectFromDatabase());
+        executeButton.addActionListener(e -> executeSQL(sqlText.getText(), userText.getText()));
+
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setVisible(true);
+    }
+
+    private void loadProperties() {
+        Properties properties = new Properties();
+        try {
+            properties.load(new FileInputStream("src/ApplicationAccountant.properties"));
+            logUsername = properties.getProperty("MY_SQL_Proj3_USERNAME");
+            logPassword = properties.getProperty("MY_SQL_Proj3_PASSWORD");
+        } catch (IOException e) {
+            statusLabel.setText("Error loading properties: " + e.getMessage());
+            statusLabel.setForeground(Color.RED);
+        }
+    }
+
+    private void connectToDatabase(String username, String password) {
+        loadProperties(); // Load properties when connecting
+        try {
+            Properties properties = new Properties();
+            properties.load(new FileInputStream("src/TheAccountant.properties"));
+            String acctUsername = properties.getProperty("MY_SQL_Acct_USERNAME");
+            String acctPassword = properties.getProperty("MY_SQL_Acct_PASSWORD");
+
+            // Validate input username and password
+            if (username.isEmpty() || password.isEmpty()) {
+                statusLabel.setText("Username or password cannot be empty.");
+                statusLabel.setForeground(Color.RED);
+                return;
+            }
+
+            String url = "jdbc:mysql://127.0.0.1:3306/operationslog"; // Replace with the actual database name
+            connection = DriverManager.getConnection(url, acctUsername, acctPassword);
+            // Check if the connection is not null
+            if (connection != null && !connection.isClosed()) {
+                statusLabel.setText("CONNECTED TO: " + url);
+                statusLabel.setForeground(Color.BLUE);
+            } else {
+                statusLabel.setText("Failed to connect: Connection is null.");
+                statusLabel.setForeground(Color.RED);
+            }
+        } catch (SQLException ex) {
+            // Handle SQL exceptions and display a specific message
+            statusLabel.setText("Connection failed: " + ex.getMessage());
+            statusLabel.setForeground(Color.RED);
+        } catch (IOException ex) {
+            // Handle IO exceptions and display a specific message
+            statusLabel.setText("Error loading properties: " + ex.getMessage());
+            statusLabel.setForeground(Color.RED);
+        }
+    }
+
+
+    private void disconnectFromDatabase() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                statusLabel.setText("Disconnected from database.");
+                statusLabel.setForeground(Color.RED);
+            }
+        } catch (SQLException ex) {
+            statusLabel.setText("Error disconnecting: " + ex.getMessage());
+            statusLabel.setForeground(Color.RED);
+        }
+    }
+
+    private void executeSQL(String sql, String username) {
+        try {
+            if (connection == null || connection.isClosed()) {
+                resultText.setText("No active connection.\n");
+                return;
+            }
+
+            sql = sql.trim();
+            System.out.println("Executing SQL: " + sql); // Debugging line
+
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    sql,
+                    ResultSet.TYPE_SCROLL_INSENSITIVE,
+                    ResultSet.CONCUR_READ_ONLY
+            );
+
+            if (sql.toLowerCase().startsWith("select") ||
+                    sql.toLowerCase().startsWith("show") ||
+                    sql.toLowerCase().startsWith("describe")) {
+
+                ResultSet rs = preparedStatement.executeQuery();
+                resultText.setText("");  // Clear previous results
+                displayResultSet(rs);
+            } else {
+                int rows = preparedStatement.executeUpdate();
+                resultText.setText("Executed successfully, affected rows: " + rows + "\n");
+                logOperation(sql, username);  // Log the executed operation
+            }
+            sqlText.setText("");  // Clear the command text area
+        } catch (SQLException e) {
+            resultText.setText("Error executing SQL: " + e.getMessage() + "\n");
+            System.err.println("SQL Error: " + e.getMessage()); // Additional logging
+        }
+    }
+
+    private void displayResultSet(ResultSet rs) throws SQLException {
+        ResultSetMetaData rsmd = rs.getMetaData();
+        int columnsNumber = rsmd.getColumnCount();
+
+        // Clear previous content
+        resultText.setText("");
+
+        // Build and append the header row
+        StringBuilder headerBuilder = new StringBuilder();
+        for (int i = 1; i <= columnsNumber; i++) {
+            headerBuilder.append(rsmd.getColumnName(i)).append("\t");
+        }
+        headerBuilder.append("\n");
+        resultText.append(headerBuilder.toString());
+
+        // Check if ResultSet is empty
+        if (!rs.isBeforeFirst()) { // If no rows are returned
+            resultText.append("No data found.\n");
+            return;
+        }
+
+        // Iterate over the ResultSet and append each row
+        while (rs.next()) {
+            StringBuilder rowBuilder = new StringBuilder();
+            for (int i = 1; i <= columnsNumber; i++) {
+                String data = rs.getString(i) != null ? rs.getString(i) : "NULL";
+                rowBuilder.append(data).append("\t");
+            }
+            rowBuilder.append("\n");
+            resultText.append(rowBuilder.toString());
+        }
+    }
+
+    private void logOperation(String sql, String username) {
+        String operationType = sql.split(" ")[0].toLowerCase();  // Get the type of operation
+        try (Connection logConn = DriverManager.getConnection("jdbc:mysql://localhost:3306/operationslog", logUsername, logPassword)) {
+            String logSQL = "INSERT INTO operationscount (operation_type, login_username, num_queries, num_updates) VALUES (?, ?, ?, ?)";
+            PreparedStatement logStmt = logConn.prepareStatement(logSQL);
+            logStmt.setString(1, operationType);
+            logStmt.setString(2, username);
+            logStmt.setInt(3, operationType.equals("select") ? 1 : 0); // Increment num_queries for SELECT
+            logStmt.setInt(4, operationType.equals("insert") || operationType.equals("update") || operationType.equals("delete") ? 1 : 0); // Increment num_updates for write operations
+            int rowsInserted = logStmt.executeUpdate();
+            System.out.println("Rows inserted in log: " + rowsInserted); // Debugging line
+        } catch (SQLException e) {
+            resultText.append("Error logging operation: " + e.getMessage() + "\n");
+            System.err.println("Logging Error: " + e.getMessage()); // Additional logging
+        }
+    }
+
+    public static void main(String[] args) {
+        new ApplicationAccountant();
+    }
+}
